@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CampusClub - 政大校園活動</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Main container */
+        .app-container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            background: #000;
+        }
+
+        /* Feed container with snap scrolling */
+        .feed-container {
+            height: 100vh;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .feed-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Each post takes full screen */
+        .post-card {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            scroll-snap-align: start;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Background image */
+        .post-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .post-background img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: brightness(0.7);
+        }
+
+        /* Dark gradient overlay */
+        .post-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                to bottom,
+                rgba(0,0,0,0) 0%,
+                rgba(0,0,0,0) 60%,
+                rgba(0,0,0,0.8) 90%,
+                rgba(0,0,0,0.9) 100%
+            );
+            z-index: 2;
+        }
+
+        /* Content positioned at bottom */
+        .post-content {
+            position: absolute;
+            bottom: 80px;
+            left: 15px;
+            right: 60px;
+            z-index: 10;
+        }
+
+        /* Club info */
+        .club-info {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            gap: 12px;
+        }
+
+        .club-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #ff0050, #00f2ea);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            border: 2px solid #fff;
+        }
+
+        .club-name {
+            font-weight: 600;
+            font-size: 16px;
+            text-shadow: 0 1px 8px rgba(0,0,0,0.8);
+        }
+
+        .follow-btn {
+            margin-left: 8px;
+            padding: 4px 12px;
+            background: #ff0050;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .follow-btn.following {
+            background: transparent;
+            border: 1px solid #fff;
+        }
+
+        /* Post title and content */
+        .post-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-shadow: 0 1px 8px rgba(0,0,0,0.8);
+            line-height: 1.3;
+        }
+
+        .post-text {
+            font-size: 14px;
+            line-height: 1.4;
+            margin-bottom: 8px;
+            text-shadow: 0 1px 6px rgba(0,0,0,0.8);
+        }
+
+        .post-text.collapsed {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .post-text.expanded {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .expand-btn {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            padding: 0;
+            margin-bottom: 8px;
+            cursor: pointer;
+            opacity: 0.9;
+        }
+
+        /* Event info */
+        .event-info {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .event-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* Side actions - TikTok style */
+        .side-actions {
+            position: absolute;
+            right: 12px;
+            bottom: 100px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .action-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .action-item:active {
+            transform: scale(0.9);
+        }
+
+        .action-icon {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 50%;
+            margin-bottom: 4px;
+        }
+
+        .action-icon svg {
+            width: 28px;
+            height: 28px;
+            fill: #fff;
+        }
+
+        .action-icon.liked svg {
+            fill: #ff0050;
+        }
+
+        .action-count {
+            font-size: 12px;
+            font-weight: 600;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+        }
+
+        /* Top navigation bar */
+        .top-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: 20px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%);
+        }
+
+        .nav-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: env(safe-area-inset-top);
+        }
+
+        .nav-tab {
+            font-size: 18px;
+            font-weight: 600;
+            opacity: 0.6;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+
+        .nav-tab.active {
+            opacity: 1;
+            position: relative;
+        }
+
+        .nav-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 2px;
+            background: #fff;
+        }
+
+        /* Bottom create button */
+        .create-button {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            width: 60px;
+            height: 30px;
+            background: linear-gradient(90deg, #ff0050 0%, #00f2ea 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            text-align: center;
+            vertical-align: middle;
+            line-height: 90px;     
+            box-shadow: 0 4px 12px rgba(255, 0, 80, 0.4);
+        }
+
+        .create-button svg {
+            width: 20px;
+            height: 20px;
+            fill: #fff;
+        }
+
+        /* Upload Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 2000;
+            animation: fadeIn 0.3s;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: #161616;
+            width: 90%;
+            max-width: 450px;
+            border-radius: 20px;
+            padding: 25px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .plus-icon {
+            vertical-align: middle;
+            text-align: center;
+            font-weight: bold;
+            font-size: 20px;
+        }
+
+        .close-modal {
+            font-size: 28px;
+            cursor: pointer;
+            color: #888;
+        }
+
+        .upload-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 10px;
+            color: #fff;
+            font-size: 14px;
+            width: 100%;
+        }
+
+        .upload-btn {
+            background: linear-gradient(45deg, #ff0050, #00f2ea);
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* Loading spinner */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: #ff0050;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Safe area adjustments for mobile */
+        @supports (padding: env(safe-area-inset-bottom)) {
+            .post-content {
+                bottom: calc(80px + env(safe-area-inset-bottom));
+            }
+            .side-actions {
+                bottom: calc(100px + env(safe-area-inset-bottom));
+            }
+            .create-button {
+                bottom: calc(30px + env(safe-area-inset-bottom));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Navigation -->
+        <div class="top-nav">
+            <div class="nav-tabs">
+                <div class="nav-tab">Following</div>
+                <div class="nav-tab active">For You</div>
+            </div>
+        </div>
+
+        <!-- Feed Container -->
+        <div class="feed-container" id="feedContainer">
+            <div class="loading"></div>
+        </div>
+
+        <!-- Create Button -->
+        <div class="create-button" onclick="openUploadModal()">
+            
+            
+                <span class="plus-icon">+</span>
+              
+            
+        </div>
+
+        <!-- Upload Modal -->
+        <div class="modal" id="uploadModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">發布活動</h2>
+                    <span class="close-modal" onclick="closeUploadModal()">&times;</span>
+                </div>
+                <form class="upload-form" id="uploadForm">
+                    <div class="form-group">
+                        <input type="text" name="title" placeholder="活動標題" required>
+                    </div>
+                    <div class="form-group">
+                        <textarea name="content" placeholder="活動詳情..." rows="4" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <select name="event_type">
+                            <option value="">選擇類型</option>
+                            <option value="workshop">工作坊</option>
+                            <option value="performance">表演</option>
+                            <option value="competition">競賽</option>
+                            <option value="meeting">會議</option>
+                            <option value="other">其他</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <input type="datetime-local" name="event_date">
+                    </div>
+                    <div class="form-group">
+                        <input type="file" name="file" accept="image/*,video/*">
+                    </div>
+                    <button type="submit" class="upload-btn">發布</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        let isLoading = false;
+        let userLikes = new Set();
+        let userSubscriptions = new Set();
+
+        // Load feed on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFeed();
+        });
+
+        // Load feed posts
+        async function loadFeed(page = 1) {
+            if (isLoading) return;
+            isLoading = true;
+
+            try {
+                const response = await fetch(`/api/feed?page=${page}`);
+                const data = await response.json();
+                
+                const feedContainer = document.getElementById('feedContainer');
+                if (page === 1) {
+                    feedContainer.innerHTML = '';
+                }
+
+                data.posts.forEach(post => {
+                    feedContainer.innerHTML += createPostHTML(post);
+                });
+
+                currentPage = page;
+                isLoading = false;
+
+                // Add infinite scroll
+                if (data.has_next) {
+                    observeLastPost();
+                }
+            } catch (error) {
+                console.error('Error loading feed:', error);
+                isLoading = false;
+            }
+        }
+
+        // Create post HTML with TikTok layout
+        function createPostHTML(post) {
+            const isLiked = userLikes.has(post.id);
+            const isSubscribed = userSubscriptions.has(post.club.id);
+            
+            // Get first 100 chars for preview
+            const preview = post.content ? post.content.substring(0, 100) + '...' : '';
+            
+            return `
+                <div class="post-card" data-post-id="${post.id}">
+                    <!-- Background Image -->
+                    <div class="post-background">
+                        <img src="${post.media_url || '/static/uploads/no_image.png'}" alt="">
+                    </div>
+                    
+                    <!-- Dark Overlay -->
+                    <div class="post-overlay"></div>
+                    
+                    <!-- Content at bottom -->
+                    <div class="post-content">
+                        <div class="club-info">
+                            <div class="club-avatar">${post.club.name.charAt(0)}</div>
+                            <span class="club-name">${post.club.username}</span>
+                            <button class="follow-btn ${isSubscribed ? 'following' : ''}" 
+                                    onclick="toggleSubscribe(${post.club.id}, this)">
+                                ${isSubscribed ? 'Following' : 'Follow'}
+                            </button>
+                        </div>
+                        
+                        ${post.title ? `<div class="post-title">${post.title}</div>` : ''}
+                        <div class="post-text collapsed" id="text-${post.id}">${preview}</div>
+                        <button class="expand-btn" onclick="toggleContent(${post.id})">...more</button>
+                        <div class="full-content" style="display:none;">${post.content}</div>
+                        
+                        <div class="event-info">
+                            ${post.event_type ? `<span class="event-badge">#${post.event_type}</span>` : ''}
+                            ${post.event_date ? `<span class="event-badge">📅 ${new Date(post.event_date).toLocaleDateString()}</span>` : ''}
+                        </div>
+                    </div>
+                    
+                    <!-- Side Actions -->
+                    <div class="side-actions">
+                        <div class="action-item" onclick="toggleLike(${post.id}, this)">
+                            <div class="action-icon ${isLiked ? 'liked' : ''}">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                                </svg>
+                            </div>
+                            <span class="action-count">${post.likes || 0}</span>
+                        </div>
+                        
+                        <div class="action-item">
+                            <div class="action-icon">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 2.98.97 4.29L1 23l6.71-1.97C9.02 21.64 10.46 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/>
+                                </svg>
+                            </div>
+                            <span class="action-count">${Math.floor(Math.random() * 100)}</span>
+                        </div>
+                        
+                        <div class="action-item">
+                            <div class="action-icon">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92z"/>
+                                </svg>
+                            </div>
+                            <span class="action-count">${Math.floor(Math.random() * 50)}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Toggle content expansion
+        function toggleContent(postId) {
+            const textDiv = document.getElementById(`text-${postId}`);
+            const btn = textDiv.nextElementSibling;
+            const fullContent = btn.nextElementSibling;
+            
+            if (textDiv.classList.contains('collapsed')) {
+                textDiv.innerHTML = fullContent.innerHTML;
+                textDiv.classList.remove('collapsed');
+                textDiv.classList.add('expanded');
+                btn.style.display = 'none';
+            } else {
+                const preview = fullContent.innerHTML.substring(0, 100) + '...';
+                textDiv.innerHTML = preview;
+                textDiv.classList.remove('expanded');
+                textDiv.classList.add('collapsed');
+                btn.style.display = 'inline';
+            }
+        }
+
+        // Toggle like
+        async function toggleLike(postId, element) {
+            try {
+                const response = await fetch(`/api/like/${postId}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({user_id: 'demo_user'})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const icon = element.querySelector('.action-icon');
+                    const count = element.querySelector('.action-count');
+                    
+                    if (data.liked) {
+                        userLikes.add(postId);
+                        icon.classList.add('liked');
+                    } else {
+                        userLikes.delete(postId);
+                        icon.classList.remove('liked');
+                    }
+                    count.textContent = data.likes;
+                }
+            } catch (error) {
+                console.error('Error toggling like:', error);
+            }
+        }
+
+        // Toggle subscribe
+        async function toggleSubscribe(clubId, button) {
+            try {
+                const response = await fetch(`/api/subscribe/${clubId}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({user_id: 'demo_user'})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.subscribed) {
+                        userSubscriptions.add(clubId);
+                        button.classList.add('following');
+                        button.textContent = 'Following';
+                    } else {
+                        userSubscriptions.delete(clubId);
+                        button.classList.remove('following');
+                        button.textContent = 'Follow';
+                    }
+                }
+            } catch (error) {
+                console.error('Error toggling subscription:', error);
+            }
+        }
+
+        // Upload modal functions
+        function openUploadModal() {
+            document.getElementById('uploadModal').classList.add('active');
+        }
+
+        function closeUploadModal() {
+            document.getElementById('uploadModal').classList.remove('active');
+        }
+
+        // Handle form submission
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const file = formData.get('file');
+            
+            let mediaUrl = null;
+            let mediaType = null;
+            
+            // Upload file if present
+            if (file && file.size > 0) {
+                const uploadFormData = new FormData();
+                uploadFormData.append('file', file);
+                
+                try {
+                    const uploadResponse = await fetch('/api/upload', {
+                        method: 'POST',
+                        body: uploadFormData
+                    });
+                    const uploadData = await uploadResponse.json();
+                    
+                    if (uploadData.success) {
+                        mediaUrl = uploadData.media_url;
+                        mediaType = uploadData.media_type;
+                    }
+                } catch (error) {
+                    console.error('Error uploading file:', error);
+                }
+            }
+            
+            // Create post
+            const postData = {
+                title: formData.get('title'),
+                content: formData.get('content'),
+                event_type: formData.get('event_type'),
+                event_date: formData.get('event_date'),
+                media_url: mediaUrl,
+                media_type: mediaType,
+                club_id: 1  // Default to first club for demo
+            };
+            
+            try {
+                const response = await fetch('/api/post', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(postData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    closeUploadModal();
+                    e.target.reset();
+                    loadFeed(1);  // Reload feed
+                }
+            } catch (error) {
+                console.error('Error creating post:', error);
+            }
+        });
+
+        // Infinite scroll
+        function observeLastPost() {
+            const posts = document.querySelectorAll('.post-card');
+            const lastPost = posts[posts.length - 1];
+            
+            if (lastPost) {
+                const observer = new IntersectionObserver((entries) => {
+                    if (entries[0].isIntersecting && !isLoading) {
+                        loadFeed(currentPage + 1);
+                        observer.disconnect();
+                    }
+                });
+                observer.observe(lastPost);
+            }
+        }
+    </script>
+</body>
+</html>
